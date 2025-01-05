@@ -1,0 +1,106 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: laundry_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    # Checkout repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Setup Node.js environment for frontend
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16
+
+    # Install dependencies and build frontend
+    - name: Install and build frontend
+      working-directory: ./frontend
+      run: |
+        npm install
+        npm run build
+
+    # Setup Go environment for backend
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.19
+
+    # Install dependencies and test backend
+    - name: Install and test backend
+      working-directory: ./backend
+      run: |
+        go mod tidy
+        go test ./...
+
+    # Build Docker images
+    - name: Build Docker images
+      run: |
+        docker build -t laundry-app-backend ./backend
+        docker build -t laundry-app-frontend ./frontend
+
+    # Run Docker Compose to test services
+    - name: Test services with Docker Compose
+      run: docker-compose up --build -d
+
+    # Verify application status
+    - name: Verify application status
+      run: |
+        sleep 20
+        curl -f http://localhost:8080/api/laundries
+        curl -f http://localhost:8081
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Deploy to DockerHub (optional)
+    - name: Log in to DockerHub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Push Docker images to DockerHub
+      run: |
+        docker tag laundry-app-backend ${{ secrets.DOCKER_USERNAME }}/laundry-app-backend:latest
+        docker tag laundry-app-frontend ${{ secrets.DOCKER_USERNAME }}/laundry-app-frontend:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/laundry-app-backend:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/laundry-app-frontend:latest
+
+    # Deploy to a server (optional)
+    - name: Deploy to server
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << EOF
+          docker pull ${{ secrets.DOCKER_USERNAME }}/laundry-app-backend:latest
+          docker pull ${{ secrets.DOCKER_USERNAME }}/laundry-app-frontend:latest
+          docker-compose -f /path/to/docker-compose.yml up -d
+        EOF
