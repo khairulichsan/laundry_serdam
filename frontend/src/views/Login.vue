@@ -32,12 +32,20 @@
                 />
               </div>
 
-              <button type="submit" class="btn btn-primary w-100">Login</button>
+              <button
+                type="submit"
+                class="btn btn-primary w-100"
+                :disabled="isLoading"
+              >
+                <span v-if="isLoading">Logging in...</span>
+                <span v-else>Login</span>
+              </button>
             </form>
           </div>
           <div class="card-footer text-center">
             <p>
-              Don't have an account? <router-link to="/register">Register here</router-link>
+              Don't have an account?
+              <router-link to="/register">Register here</router-link>
             </p>
           </div>
         </div>
@@ -47,33 +55,56 @@
 </template>
 
 <script>
-import api from "@/api";
+import api from "@/api"; // Import the centralized Axios instance
 
 export default {
   data() {
     return {
       email: "",
       password: "",
+      isLoading: false, // Tracks the loading state
     };
   },
   methods: {
     async loginUser() {
       const credentials = {
-        email: this.email,
+        email: this.email.trim(), // Trimming extra spaces
         password: this.password,
       };
 
+      // Check if password is empty
+      if (!credentials.password.trim()) {
+        alert("Password cannot be empty.");
+        return;
+      }
+
+      this.isLoading = true; // Start loading spinner
       try {
-        // Using the api instance from api.js to send the POST request
+        // Send POST request using the centralized Axios instance
         const response = await api.post("/api/v1/login", credentials);
 
         // Store the JWT token in localStorage
         localStorage.setItem("token", response.data.token);
         alert("Login successful!");
-        this.$router.push("/dashboard"); // Redirect to the dashboard or homepage after successful login
+
+        // Redirect to the dashboard
+        this.$router.push("/dashboard");
       } catch (error) {
-        console.error("Error during login:", error.response.data);
-        alert("Invalid credentials! Please try again.");
+        if (error.response) {
+          // Handle server errors
+          console.error("Error during login:", error.response.data);
+          alert(error.response.data.message || "Invalid credentials! Please try again.");
+        } else if (error.request) {
+          // Handle no response from the server
+          console.error("No response received from the server:", error.request);
+          alert("Server is not responding. Please try again later.");
+        } else {
+          // Handle unexpected errors
+          console.error("Error during login:", error.message);
+          alert("An unexpected error occurred. Please try again.");
+        }
+      } finally {
+        this.isLoading = false; // Stop loading spinner
       }
     },
   },
@@ -88,5 +119,9 @@ export default {
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+.btn:disabled {
+  background-color: #c0c0c0;
+  cursor: not-allowed;
 }
 </style>

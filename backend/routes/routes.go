@@ -13,8 +13,12 @@ func SetupRoutes(r *gin.Engine) {
 		v1.POST("/register", controllers.RegisterUser)
 		v1.POST("/login", controllers.LoginUser)
 		v1.GET("/users", controllers.GetUsers)
+		v1.DELETE("/users/:id", controllers.DeleteUser)
 		v1.GET("/orders", controllers.GetOrders)
-		v1.GET("/services", controllers.GetServices)
 		v1.POST("/orders", controllers.CreateOrder)
+		v1.GET("/services", controllers.GetServices)
+		v1.POST("/input_services", controllers.InputService)
+		v1.DELETE("/services/:id", controllers.DeleteService)
+
 	}
 }

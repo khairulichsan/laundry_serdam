@@ -83,3 +83,33 @@ func LoginUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
+
+func DeleteUser(c *gin.Context) {
+	// Get the user ID from the URL parameters
+	id := c.Param("id")
+	log.Println("Received request to delete user with ID:", id)
+
+	// Ensure that the ID is not empty or invalid
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid ID parameter"})
+		return
+	}
+
+	// Check if the user exists by querying the database for the given ID
+	var user models.User
+	if err := config.DB.First(&user, id).Error; err != nil {
+		log.Println("User not found:", err)
+		c.JSON(http.StatusNotFound, gin.H{"message": "User not found"})
+		return
+	}
+
+	// Delete the user from the database
+	if err := config.DB.Delete(&user).Error; err != nil {
+		log.Println("Error deleting user:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to delete user"})
+		return
+	}
+
+	log.Println("User deleted successfully:", id)
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}

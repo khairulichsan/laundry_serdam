@@ -65,6 +65,7 @@ import axios from "axios";
 export default {
   data() {
     return {
+      name:"",
       email: "",
       password: "",
     };
@@ -72,6 +73,7 @@ export default {
   methods: {
     async registerUser() {
       const userData = {
+        name: this.name,
         email: this.email,
         password: this.password,
       };
