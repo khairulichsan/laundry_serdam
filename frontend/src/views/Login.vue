@@ -47,7 +47,6 @@
 </template>
 
 <script>
-// Import the api.js instance for centralized axios configuration
 import api from "@/api";
 
 export default {
